@@ -1,97 +1,85 @@
-'''
-Concepts Covered: Object interaction, inheritance, random module usage
-Task:
-Create a Character class with attributes like name, health, and attack_power.
-Add methods for attacking another character and taking damage.
-Implement subclasses such as Warrior, Mage, and Archer with unique abilities.
-Challenge Extension: Add an inventory system where characters can pick up and use items.
-'''
 import math
 import random
+
+# ----------------------------- [base variables]
+
 global combatturn
 def printline():
     print('-------------------------------------')
 combatturn = 0
+
+# ----------------------------- [all-encompassing combat function]
+
 def startcombat(player1, player2):
     def taketurn(current, opponent):
         print(f'{current.name}, it is your turn. \nYour health: {current.currenthealth}/{current.maxhealth}\nEnemy health: {opponent.currenthealth}/{opponent.maxhealth}\nActions: ')
         for n in range(len(current.charactions)):
             print(f'{n+1}) {current.charactions[n]}') # Base example: '1) Attack 2) Flee'
         while True:
-            p1action = input(f'{current.name}, input your action: ').upper()
-            if p1action in current.charactions:
-                if p1action == 'ATTACK':
-                    current.attack(opponent)
-                    break
-                if p1action == 'FLEE':
-                    print(f'{current.name} is trying to flee...')
-                    if random.randint(0, current.fleevar) == 0:
-                        print(f'{current.name} has fled!')
-                        combatturn = -1 # end combat
-                        break
-                    else:
-                        print(f'{current.name} has failed to flee!')
-                        break
-                if p1action == 'DISTRACT':
-                    player1.distract(opponent)
-                    break
-                if p1action == 'HEAL':
-                    player1.heal()
-                    break
+            currentplayeraction = input(f'{current.name}, input your action: ').upper()
+            if currentplayeraction in current.charactions:
+                if currentplayeraction == 'ATTACK': current.attack(opponent)
+                elif currentplayeraction == 'FLEE': current.flee()
+                elif currentplayeraction == 'DISTRACT': current.distract(opponent)
+                elif currentplayeraction == 'HEAL': current.heal()
+                elif currentplayeraction == 'EMPOWER': current.empower(opponent)
+                break
             else: print(f'{current.name}, that is an invalid action.')
     global combatturn
     combatturn = 0 # reset combat turn
     while not player1.charisdead and not player2.charisdead:
-        if combatturn == -1:
-            break # exit combat on successful flee
+        if combatturn == -1: break # exit combat on successful flee
         else:
             printline()
             combatturn = combatturn + 1
             print(f'Combat Turn: {combatturn}')
             printline()
-            if combatturn % 2 == 0:
-                taketurn(player1, player2)
-            elif combatturn % 2 != 0:
-                taketurn(player2, player1)
+            if combatturn % 2 == 0: taketurn(player1, player2)
+            elif combatturn % 2 != 0: taketurn(player2, player1)
     printline()
     print(f'Combat is over.')
     printline()
     if player1.charisdead: print(f'{player2.name} has won!')
     if player2.charisdead: print(f'{player1.name} has won!')
 
+# ----------------------------- [base character class and methods]
+
 class Character:
     fleevar = 6
     charactions = ['ATTACK', 'FLEE']
-    maxhealth = 10
+    maxhealth = 25
     attackpower = 2
-    def __init__(self, name="John", maxhealth=20, attackpower=2):
-        self.charisdead = False
-        self.currenthealth = maxhealth
+    critchance = 8
+    def __init__(self, name="John", maxhealth=25, attackpower=2, critchance=8):
+        self.charisdead, self.currenthealth, self.critchance = False, maxhealth, critchance
         self.name, self.maxhealth, self.attackpower = name, maxhealth, attackpower
-    
     def __repr__(self):
-        return f'Name: {self.name}, Health: {self.currenthealth}/{self.maxhealth}, Attack Power: {self.attackpower}, Is Dead: {self.charisdead}, Actions: {self.charactions}, Flee Chance: 1/{self.fleevar}'
-    
+        return f'Name: {self.name}, Health: {self.currenthealth}/{self.maxhealth}, \
+Attack Power: {self.attackpower}, Is Dead: {self.charisdead}, Actions: {self.charactions}, Flee Chance: 1/{self.fleevar}'
     def attack(self, other, modifier=0):
-        if random.randint(0, 20) == 0:
+        if random.randint(0, self.critchance) == 0: # based on fleevar to benefit rogue
             print('Critical Hit!')
             modifier = self.attackpower # double damage
         other.currenthealth = other.currenthealth - (self.attackpower + modifier)
         print(f'{self.name} has attacked {other.name} for {self.attackpower + modifier} damage!')
         print(f'{other.name} has {other.currenthealth} health left.')
-        if other.currenthealth <= 0:
-            other.currenthealth = 0
-            other.charisdead = True
+        if other.currenthealth <= 0: other.currenthealth, other.charisdead = 0, True
+    def flee(self):
+        print(f'{self.name} is trying to flee...')
+        if random.randint(0, self.fleevar) == 0:
+            print(f'{self.name} has fled!')
+            global combatturn
+            combatturn = -1 # end combat
+        else: print(f'{self.name} has failed to flee!')
+
+# ----------------------------- [subclass creation]
 
 class Rogue(Character):
-    Character.maxhealth = math.ceil(Character.maxhealth * 0.75) # set base health to 3/4
-    Character.currenthealth = Character.maxhealth
-    Character.fleevar = 4
-    Character.charactions = ['ATTACK', 'FLEE', 'DISTRACT'] # special action: distraction
-    def __init__(self, name="Rogue"):
-        super().__init__(name, maxhealth=...)
-        self.maxhealth, self.currenthealth, self.fleevar, self.charactions = Character.maxhealth, Character.currenthealth, Character.fleevar, Character.charactions
-        self.name = name
+    def __init__(self, name="Rogue", maxhealth=25, attackpower=2, critchance=8):
+        super().__init__(name, maxhealth, attackpower, critchance)
+        self.maxhealth = math.ceil(maxhealth * 0.75) # set base health to 3/4 normal
+        self.currenthealth, self.fleevar, self.name = self.maxhealth, 4, name
+        self.charactions = ['ATTACK', 'FLEE', 'DISTRACT'] # special action: distract
     def distract(self, other):
         print(f'{self.name} is trying to distract {other.name}...')
         if random.randint(0, 3) == 0 and self.fleevar > 2: # 1/3 success rate
@@ -101,18 +89,34 @@ class Rogue(Character):
         else: print(f'{self.name} has failed to distract {other.name}.')
 
 class Wizard(Character):
-    Character.maxhealth = math.ceil(Character.maxhealth * 0.5) # halve base health to balance out
-    Character.currenthealth = Character.maxhealth
-    Character.fleevar = 6
-    Character.charactions = ['ATTACK', 'FLEE', 'HEAL'] # special action: healing
+    def __init__(self, name="Wizard", maxhealth=25, attackpower=3, critchance=8):
+        super().__init__(name, maxhealth, attackpower, critchance)
+        self.maxhealth = math.ceil(self.maxhealth * 0.5) # halve base health to balance
+        self.currenthealth, self.name = self.maxhealth, name # no need to change fleevar from default
+        self.charactions = ['ATTACK', 'FLEE', 'HEAL'] # special action: healing
     def heal(self):
         healamount = random.randint(0, math.ceil((self.maxhealth/2))) # max heals = 1/2 max health
-        if self.currenthealth + healamount > self.maxhealth:
-            healamount = self.maxhealth - self.currenthealth # override heal value so it doesn't overheal
+        if self.currenthealth + healamount > self.maxhealth: healamount = self.maxhealth - self.currenthealth # override heal value so it doesn't overheal
         print(f'{self.name} has healed {healamount} health!')
         self.currenthealth = self.currenthealth + healamount # actual healing
 
-c1 = Wizard('Albert')
+class Fighter(Character):
+    def __init__(self, name="Fighter", maxhealth=25, attackpower=3, critchance=6):
+        super().__init__(name, maxhealth, attackpower, critchance)
+        self.currenthealth, self.name = self.maxhealth, name
+        self.charactions = ['ATTACK', 'FLEE', 'EMPOWER'] # special action: empower
+        self.empoweruses = 0 # variable to counter empower stacking
+    def empower(self, other):
+        print(f'{self.name} is trying to empower themselves...')
+        if random.randint(0, 5+self.empoweruses) <= 3: # 2/3 success first try, scales with use amount
+            print(f'{other.name} has brought upon {self.name}\'s wrath!')
+            print(f'{self.name}\'s damage has increased!')
+            self.attackpower = self.attackpower + 1
+        else: print(f'{self.name} lost their concentration.')
+
+# ----------------------------- [character creation and combat initiation]
+
+c1 = Fighter('Albert')
 c2 = Rogue('Mark')
 
 print(c1)
